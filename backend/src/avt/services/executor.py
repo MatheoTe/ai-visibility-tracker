@@ -19,6 +19,7 @@ import asyncio
 import datetime as dt
 import random
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -79,6 +80,10 @@ class _Loaded:
     day: dt.date
 
 
+FinalizeFn = Callable[[uuid.UUID, uuid.UUID], Awaitable[None]]
+"""``finalize(run_id, workspace_id)`` - check whether a run is done and close it."""
+
+
 async def finalize_if_done(db: Database, run_id: uuid.UUID, workspace_id: uuid.UUID) -> None:
     """Shared tail of every terminal transition: close the run, refresh rollups."""
     async with db.session() as session:
@@ -101,6 +106,7 @@ class TaskExecutor:
         budget: RetryBudget,
         brands: BrandCache,
         enqueue: EnqueueFn,
+        finalize: FinalizeFn | None = None,
         rng: random.Random | None = None,
     ) -> None:
         self.db = db
@@ -112,6 +118,7 @@ class TaskExecutor:
         self.budget = budget
         self.brands = brands
         self.enqueue = enqueue
+        self.finalize: FinalizeFn = finalize or (lambda run_id, ws_id: finalize_if_done(db, run_id, ws_id))
         self.rng = rng or random.Random()
 
     def _jitter(self, delay: float) -> float:
@@ -325,5 +332,5 @@ class TaskExecutor:
             await session.commit()
         log.warning("task.dead_lettered", task_id=task.id, attempt=attempt, error=error)
         TASKS.labels(TaskStatus.DEAD.value).inc()
-        await finalize_if_done(self.db, task.run_id, task.workspace_id)
+        await self.finalize(task.run_id, task.workspace_id)
         return Outcome("dead", reason=outcome_label)

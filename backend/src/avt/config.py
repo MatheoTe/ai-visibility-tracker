@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     breaker_cooldown_seconds: int = 20
     dispatch_batch_size: int = 500
     worker_max_jobs: int = 64
+    analysis_max_jobs: int = 48  # analysis is mostly DB round trips; concurrency pays off
     worker_metrics_port: int = 9100  # 0 disables the worker metrics server
 
     # Scheduler.

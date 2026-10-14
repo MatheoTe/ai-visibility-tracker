@@ -24,7 +24,7 @@ from avt.logging import get_logger
 from avt.metrics import ANALYSES
 from avt.services.aggregates import rebuild_daily_stats
 from avt.services.brand_cache import BrandCache
-from avt.services.executor import finalize_if_done
+from avt.services.executor import FinalizeFn, finalize_if_done
 
 log = get_logger(__name__)
 
@@ -43,8 +43,15 @@ def build_sentiment_analyzer(settings: Settings) -> SentimentAnalyzer:
 
 
 class AnalysisService:
-    def __init__(self, db: Database, brands: BrandCache, sentiment: SentimentAnalyzer) -> None:
+    def __init__(
+        self,
+        db: Database,
+        brands: BrandCache,
+        sentiment: SentimentAnalyzer,
+        finalize: FinalizeFn | None = None,
+    ) -> None:
         self.db = db
+        self.finalize: FinalizeFn = finalize or (lambda run_id, ws_id: finalize_if_done(db, run_id, ws_id))
         self.brands = brands
         self.sentiment = sentiment
 
@@ -72,7 +79,7 @@ class AnalysisService:
             )
             analysis_id = await self._persist(response, result)
         if finalize:
-            await finalize_if_done(self.db, response.run_id, response.workspace_id)
+            await self.finalize(response.run_id, response.workspace_id)
         return analysis_id
 
     async def _persist(self, response: Response, result: AnalysisResult) -> int | None:

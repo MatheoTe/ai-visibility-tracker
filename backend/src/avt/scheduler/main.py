@@ -28,6 +28,7 @@ from avt.db.base import Database
 from avt.db.models import Run, RunTask, Workspace
 from avt.domain import RunStatus, RunTrigger, TaskStatus
 from avt.logging import configure_logging, get_logger
+from avt.services.executor import finalize_if_done
 from avt.services.runs import EnqueueFn, create_run
 from avt.worker.main import make_enqueue
 
@@ -104,6 +105,20 @@ async def sweep(db: Database, enqueue: EnqueueFn) -> int:
         )
     for run_id in run_ids:
         await enqueue("dispatch_run", str(run_id))
+
+    # Safety net for finalisation: a run whose last finalize job was lost (worker
+    # killed mid-job) is closed here within one tick.
+    async with db.session() as session:
+        open_runs = (
+            await session.execute(
+                select(Run.id, Run.workspace_id).where(
+                    Run.status == RunStatus.RUNNING,
+                    Run.started_at < func.now() - SWEEP_PENDING_AFTER,
+                )
+            )
+        ).all()
+    for run_id, workspace_id in open_runs:
+        await finalize_if_done(db, run_id, workspace_id)
     if run_ids:
         log.info("scheduler.swept", runs=len(run_ids))
     return len(run_ids)

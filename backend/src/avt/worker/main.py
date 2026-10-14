@@ -8,6 +8,7 @@ tasks are re-scheduled instead of sleeping inside a worker slot.
 from __future__ import annotations
 
 import datetime as dt
+import time
 import uuid
 from typing import Any
 
@@ -26,7 +27,7 @@ from avt.resilience.concurrency import ConcurrencyLimiter
 from avt.resilience.token_bucket import TokenBucketLimiter
 from avt.services.analyzer import AnalysisService, build_sentiment_analyzer
 from avt.services.brand_cache import BrandCache
-from avt.services.executor import TaskExecutor
+from avt.services.executor import FinalizeFn, TaskExecutor, finalize_if_done
 from avt.services.runs import EnqueueFn
 from avt.services.runs import dispatch_run as dispatch_run_service
 
@@ -53,7 +54,37 @@ QUEUE_FOR = {
     "dispatch_run": TASKS_QUEUE,
     "analyze_response": ANALYSIS_QUEUE,
     "reanalyze": ANALYSIS_QUEUE,
+    "finalize_run": ANALYSIS_QUEUE,
 }
+
+
+FINALIZE_WINDOW_SECONDS = 2.0
+
+
+def make_finalize(pool: ArqRedis) -> FinalizeFn:
+    """Coalesced run finalisation.
+
+    Checking "is this run done?" after every one of thousands of analyses costs a
+    query each, and the check gets more expensive as the run nears the end. Instead
+    each caller enqueues a finalize job keyed by (run, 2-second window) and deferred
+    to the end of that window: arq de-duplicates by job id, so a run is checked at
+    most once per window, and the job for the window of the last commit always runs
+    after it. Correct by construction, O(runtime) checks instead of O(tasks).
+    """
+
+    async def finalize(run_id: uuid.UUID, workspace_id: uuid.UUID) -> None:
+        window = int(time.time() // FINALIZE_WINDOW_SECONDS)
+        run_at = (window + 1) * FINALIZE_WINDOW_SECONDS + 0.25
+        await pool.enqueue_job(
+            "finalize_run",
+            str(run_id),
+            str(workspace_id),
+            _job_id=f"finalize_run:{run_id}:{window}",
+            _queue_name=ANALYSIS_QUEUE,
+            _defer_until=dt.datetime.fromtimestamp(run_at, dt.UTC),
+        )
+
+    return finalize
 
 
 def make_enqueue(pool: ArqRedis) -> EnqueueFn:
@@ -71,6 +102,7 @@ async def startup(ctx: Ctx) -> None:
     brands = BrandCache()
     registry = ProviderRegistry(settings)
     enqueue = make_enqueue(pool)
+    finalize = make_finalize(pool)
     ctx.update(
         settings=settings,
         db=db,
@@ -92,8 +124,9 @@ async def startup(ctx: Ctx) -> None:
             budget=RetryBudget(pool, ratio=settings.retry_budget_ratio, floor=settings.retry_budget_floor),
             brands=brands,
             enqueue=enqueue,
+            finalize=finalize,
         ),
-        analysis=AnalysisService(db, brands, build_sentiment_analyzer(settings)),
+        analysis=AnalysisService(db, brands, build_sentiment_analyzer(settings), finalize=finalize),
     )
     if settings.worker_metrics_port:
         try:
@@ -127,6 +160,11 @@ async def analyze_response(ctx: Ctx, response_id: int) -> int | None:
                 raise Retry(defer=2**job_try) from exc
             raise
         return result
+
+
+async def finalize_run(ctx: Ctx, run_id: str, workspace_id: str) -> None:
+    with structlog.contextvars.bound_contextvars(run_id=run_id):
+        await finalize_if_done(ctx["db"], uuid.UUID(run_id), uuid.UUID(workspace_id))
 
 
 async def dispatch_run(ctx: Ctx, run_id: str) -> int:
@@ -177,13 +215,14 @@ class AnalysisWorkerSettings:
     queue_name = ANALYSIS_QUEUE
     functions = [
         func(analyze_response, keep_result=0, max_tries=10),
+        func(finalize_run, keep_result=0, max_tries=5),
         func(reanalyze, keep_result=0, max_tries=1, timeout=6 * 3600),
     ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(_settings.redis_url)
     # CPU-bound: a modest number of concurrent jobs per process; scale with processes.
-    max_jobs = 16
+    max_jobs = _settings.analysis_max_jobs
     job_timeout = 300
     keep_result = 0
     health_check_interval = 30
