@@ -33,7 +33,7 @@ dependencies = [
 avt-api = "avt.api.main:run"
 avt-scheduler = "avt.scheduler.main:run"
 avt-seed = "avt.cli.seed:main"
-avt-loadtest = "avt.cli.loadtest:main"
+avt-loadtest = "avt.cli.loadtest:run"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
