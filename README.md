@@ -1,6 +1,6 @@
 # AI Visibility Tracker
 
-[![Live demo](https://img.shields.io/badge/Live_demo-open_the_dashboard-2a78d6?style=for-the-badge)](https://ai-visibility-tracker.vercel.app)
+[![Live demo](https://img.shields.io/badge/Live_demo-open_the_dashboard-2a78d6?style=for-the-badge)](https://ai-visibility-tracker-matheote.vercel.app)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/MatheoTe/ai-visibility-tracker)
 
 **When someone asks an AI assistant "what's the best CRM for a small business?", is your brand in the answer?**
@@ -23,7 +23,7 @@ Dark mode: [`docs/screenshots/dashboard-dark.png`](docs/screenshots/dashboard-da
 
 Two ways to try it without installing anything:
 
-- **[Live demo](https://ai-visibility-tracker.vercel.app)** — the dashboard as a static site, read-only. Every page (overview, prompts and the per-answer drill-down, brands, sources, runs and the run monitor) is served from a JSON snapshot of the seeded demo workspace, so there is no backend behind it: actions that would write (Run now, add a prompt, delete a brand, …) explain that they are disabled. Dates are shifted so the 30 days of history always end today. All data is fictional.
+- **[Live demo](https://ai-visibility-tracker-matheote.vercel.app)** — the dashboard as a static site, read-only. Every page (overview, prompts and the per-answer drill-down, brands, sources, runs and the run monitor) is served from a JSON snapshot of the seeded demo workspace, so there is no backend behind it: actions that would write (Run now, add a prompt, delete a brand, …) explain that they are disabled. Dates are shifted so the 30 days of history always end today. All data is fictional.
 - **[Codespaces](https://codespaces.new/MatheoTe/ai-visibility-tracker)** — the full system in your browser: Postgres, Redis, API, workers, scheduler and dashboard from the same `docker-compose.yml`, on the fake provider, no secrets. The first start builds the images (a few minutes); then the Dashboard port opens and you sign in as `demo@avt.dev` / `demo-password`. Here **Run now** really fans out tasks to the workers and you can watch the run fill in.
 
 <details>
