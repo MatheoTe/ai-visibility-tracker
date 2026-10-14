@@ -291,6 +291,7 @@ class BrandMention(Base):
     __table_args__ = (
         UniqueConstraint("analysis_id", "brand_id"),
         Index("ix_brand_mentions_ws_day", "workspace_id", "analysis_version", "day"),
+        Index("ix_brand_mentions_prompt_day", "prompt_id", "day"),
     )
 
 

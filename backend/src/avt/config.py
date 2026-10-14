@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, PrivateAttr, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     breaker_cooldown_seconds: int = 20
     dispatch_batch_size: int = 500
     worker_max_jobs: int = 64
+    worker_metrics_port: int = 9100  # 0 disables the worker metrics server
 
     # Scheduler.
     scheduler_tick_seconds: int = 60
@@ -81,9 +82,15 @@ class Settings(BaseSettings):
     # Analysis.
     use_llm_analyzer: bool = True
 
+    _limits: dict[str, ProviderLimits] = PrivateAttr(default_factory=dict)
+
     def limits_for(self, provider: str) -> ProviderLimits:
-        """Limits for a provider, read from ``AVT_LIMITS_<PROVIDER>_*`` env vars."""
-        return ProviderLimits(_env_prefix=f"AVT_LIMITS_{provider.upper()}_")
+        """Limits for a provider, read once from ``AVT_LIMITS_<PROVIDER>_*`` env vars
+        (e.g. ``AVT_LIMITS_OPENAI_REQUESTS_PER_MINUTE=5000``)."""
+        limits = self._limits.get(provider)
+        if limits is None:
+            limits = self._limits[provider] = ProviderLimits(_env_prefix=f"AVT_LIMITS_{provider.upper()}_")
+        return limits
 
 
 @lru_cache
