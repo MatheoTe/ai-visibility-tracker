@@ -1,0 +1,12 @@
+# Codespaces overrides for ../docker-compose.yml.
+#
+# A forwarded port in Codespaces is its own origin (https://<name>-8000.app.github.dev),
+# so instead of the browser calling the API directly the dashboard proxies
+# /api/v1/* to the api service: only port 3000 has to be reachable, no CORS, no
+# public ports.
+services:
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: ""
+        API_PROXY_TARGET: http://api:8000
