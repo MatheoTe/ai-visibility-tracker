@@ -185,10 +185,10 @@ export default function DashboardPage() {
                           <Td>
                             <span className="inline-flex items-center gap-2">
                               <span className="size-2.5 rounded-full" style={{ background: colors.get(b.id) }} aria-hidden />
-                              <span className={b.role === "primary" ? "font-semibold" : undefined}>{b.name}</span>
+                              <span className={cn("whitespace-nowrap", b.role === "primary" && "font-semibold")}>{b.name}</span>
                             </span>
                           </Td>
-                          <Td className="tabular text-right">
+                          <Td className="tabular whitespace-nowrap text-right">
                             {f.pct(k?.share_of_voice)}
                             {k?.share_of_voice_delta !== undefined && k?.share_of_voice_delta !== null ? (
                               <span className="ml-1 text-xs text-muted-foreground">{f.ppDelta(k.share_of_voice_delta)}</span>

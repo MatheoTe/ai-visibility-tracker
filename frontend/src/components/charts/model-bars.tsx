@@ -33,6 +33,7 @@ export function ModelBars({ overview, colors }: { overview: Overview; colors: Ma
             ]}
           />
           <Legend
+            itemSorter={null}
             formatter={(value: string) => (
               <span style={{ color: "var(--foreground)", fontSize: 12 }}>
                 {overview.brands.find((b) => b.id === value)?.name ?? value}

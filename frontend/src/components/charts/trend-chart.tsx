@@ -49,6 +49,7 @@ export function TrendChart({ overview, metric, colors, format, height = 280 }: P
             ]}
           />
           <Legend
+            itemSorter={null}
             formatter={(value: string) => (
               <span style={{ color: "var(--foreground)", fontSize: 12 }}>
                 {overview.brands.find((b) => b.id === value)?.name ?? value}
