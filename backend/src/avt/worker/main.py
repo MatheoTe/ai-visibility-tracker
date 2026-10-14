@@ -41,9 +41,24 @@ def job_id(name: str, arg: object) -> str:
     return f"{name}:{arg}"
 
 
+TASKS_QUEUE = "avt:queue:tasks"
+ANALYSIS_QUEUE = "avt:queue:analysis"
+
+# The two stages have opposite profiles - execution is I/O-bound (waiting on LLM
+# APIs), analysis is CPU-bound (regex, fuzzy matching) - so they run on separate
+# queues and separate worker pools that scale independently. A burst of analysis
+# work can then never starve dispatch or provider calls on the same event loop.
+QUEUE_FOR = {
+    "execute_task": TASKS_QUEUE,
+    "dispatch_run": TASKS_QUEUE,
+    "analyze_response": ANALYSIS_QUEUE,
+    "reanalyze": ANALYSIS_QUEUE,
+}
+
+
 def make_enqueue(pool: ArqRedis) -> EnqueueFn:
     async def enqueue(name: str, arg: int | str) -> None:
-        await pool.enqueue_job(name, arg, _job_id=job_id(name, arg))
+        await pool.enqueue_job(name, arg, _job_id=job_id(name, arg), _queue_name=QUEUE_FOR[name])
 
     return enqueue
 
@@ -69,7 +84,8 @@ async def startup(ctx: Ctx) -> None:
             concurrency=ConcurrencyLimiter(pool),
             breaker=CircuitBreaker(
                 pool,
-                failure_threshold=settings.breaker_failure_threshold,
+                failure_ratio=settings.breaker_failure_ratio,
+                min_requests=settings.breaker_min_requests,
                 window_seconds=settings.breaker_window_seconds,
                 cooldown_seconds=settings.breaker_cooldown_seconds,
             ),
@@ -137,18 +153,37 @@ _settings = get_settings()
 
 
 class WorkerSettings:
+    """Execution stage: ``arq avt.worker.main.WorkerSettings``."""
+
+    queue_name = TASKS_QUEUE
     functions = [
         # Attempts are counted in Postgres (run_tasks.attempts); arq's own try counter
         # would also count throttling deferrals, so it is set out of the way.
         func(execute_task, keep_result=0, max_tries=100_000),
-        func(analyze_response, keep_result=0, max_tries=10),
         func(dispatch_run, keep_result=0, max_tries=5, timeout=1800),
-        func(reanalyze, keep_result=0, max_tries=1, timeout=6 * 3600),
     ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(_settings.redis_url)
     max_jobs = _settings.worker_max_jobs
+    job_timeout = 300
+    keep_result = 0
+    health_check_interval = 30
+
+
+class AnalysisWorkerSettings:
+    """Analysis stage: ``arq avt.worker.main.AnalysisWorkerSettings``."""
+
+    queue_name = ANALYSIS_QUEUE
+    functions = [
+        func(analyze_response, keep_result=0, max_tries=10),
+        func(reanalyze, keep_result=0, max_tries=1, timeout=6 * 3600),
+    ]
+    on_startup = startup
+    on_shutdown = shutdown
+    redis_settings = RedisSettings.from_dsn(_settings.redis_url)
+    # CPU-bound: a modest number of concurrent jobs per process; scale with processes.
+    max_jobs = 16
     job_timeout = 300
     keep_result = 0
     health_check_interval = 30

@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from avt.api.main import create_app
 from avt.config import Settings
 from avt.db.base import Base, Database
-from avt.worker.main import WorkerSettings, shutdown, startup
+from avt.worker.main import AnalysisWorkerSettings, WorkerSettings, shutdown, startup
 
 DB_URL = os.environ.get("AVT_TEST_DATABASE_URL")
 REDIS_URL = os.environ.get("AVT_TEST_REDIS_URL")
@@ -56,7 +56,7 @@ def make_settings(**overrides: Any) -> Settings:
         "fake_error_rate": 0.0,
         "backoff_base_seconds": 0.05,
         "backoff_max_seconds": 0.2,
-        "breaker_failure_threshold": 1000,
+        "breaker_min_requests": 1000,
         "worker_metrics_port": 0,
         "worker_max_jobs": 50,
         "log_json": False,
@@ -133,12 +133,15 @@ WorkerRunner = Callable[..., Awaitable[None]]
 
 @pytest.fixture
 def run_worker(settings: Settings) -> WorkerRunner:
-    """Run a real arq worker in burst mode until the queue (incl. deferred jobs) is empty."""
+    """Run real arq workers (execution + analysis) in burst mode until both queues,
+    including deferred jobs, are empty."""
 
-    async def _run(**overrides: Any) -> None:
-        worker_settings = make_settings(**overrides) if overrides else settings
+    async def _one(
+        stage: type[WorkerSettings] | type[AnalysisWorkerSettings], worker_settings: Settings
+    ) -> int:
         worker = Worker(
-            functions=WorkerSettings.functions,
+            functions=stage.functions,
+            queue_name=stage.queue_name,
             on_startup=startup,
             on_shutdown=shutdown,
             redis_settings=RedisSettings.from_dsn(worker_settings.redis_url),
@@ -154,6 +157,17 @@ def run_worker(settings: Settings) -> WorkerRunner:
             await worker.main()
         finally:
             await worker.close()
+        return worker.jobs_complete + worker.jobs_retried + worker.jobs_failed
+
+    async def _run(**overrides: Any) -> None:
+        worker_settings = make_settings(**overrides) if overrides else settings
+        # Stages feed each other (execution -> analysis -> finalisation), so alternate
+        # until a full pass over both queues finds nothing to do.
+        while True:
+            ran = await _one(WorkerSettings, worker_settings)
+            ran += await _one(AnalysisWorkerSettings, worker_settings)
+            if ran == 0:
+                return
 
     return _run
 

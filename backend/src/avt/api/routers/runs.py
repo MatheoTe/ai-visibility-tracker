@@ -23,6 +23,7 @@ from avt.schemas.api import (
     TaskOut,
 )
 from avt.services.runs import create_run, retry_failed, run_progress
+from avt.worker.main import ANALYSIS_QUEUE
 
 router = APIRouter(prefix="/workspaces/{workspace_id}", tags=["runs"])
 
@@ -177,6 +178,10 @@ async def reanalyze(body: ReanalyzeIn, workspace: WorkspaceDep, request: Request
     if body.date_to < body.date_from:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "date_to must be >= date_from")
     await request.app.state.pool.enqueue_job(
-        "reanalyze", str(workspace.id), body.date_from.isoformat(), body.date_to.isoformat()
+        "reanalyze",
+        str(workspace.id),
+        body.date_from.isoformat(),
+        body.date_to.isoformat(),
+        _queue_name=ANALYSIS_QUEUE,
     )
     return {"status": "queued", "analysis_version": str(ANALYSIS_VERSION)}
