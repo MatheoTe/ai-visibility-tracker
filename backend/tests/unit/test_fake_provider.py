@@ -26,7 +26,8 @@ def request(prompt: str = "best CRM for small businesses", **kw: object) -> Gene
 async def test_is_deterministic() -> None:
     p = FakeProvider("anthropic", error_rate=0, sleep=_no_sleep)
     a, b = await p.generate(request()), await p.generate(request())
-    assert a.text == b.text and a.output_tokens == b.output_tokens
+    assert a.text == b.text
+    assert a.output_tokens == b.output_tokens
 
 
 async def test_varies_by_day_and_provider() -> None:
@@ -39,14 +40,17 @@ async def test_varies_by_day_and_provider() -> None:
 
 async def test_answers_look_like_ranked_lists_with_sources() -> None:
     result = await FakeProvider("openai", error_rate=0, sleep=_no_sleep).generate(request())
-    assert "1. **" in result.text and "https://" in result.text
-    assert result.input_tokens > 0 and result.output_tokens > 0
+    assert "1. **" in result.text
+    assert "https://" in result.text
+    assert result.input_tokens > 0
+    assert result.output_tokens > 0
     assert result.citations == []
 
 
 async def test_perplexity_returns_out_of_band_citations() -> None:
     result = await FakeProvider("perplexity", error_rate=0, sleep=_no_sleep).generate(request())
-    assert result.citations and all(c.startswith("https://") for c in result.citations)
+    assert result.citations
+    assert all(c.startswith("https://") for c in result.citations)
 
 
 async def test_error_injection_is_seeded_per_attempt() -> None:

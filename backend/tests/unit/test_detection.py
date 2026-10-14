@@ -24,7 +24,7 @@ def detector() -> BrandDetector:
 
 
 def test_normalize_folds_case_accents_and_typography() -> None:
-    assert normalize("  Café CRM’s  “best”  ") == "cafe crm's \"best\""
+    assert normalize("  Café CRM’s  “best”  ") == 'cafe crm\'s "best"'
 
 
 def test_offsets_map_back_to_original_text() -> None:

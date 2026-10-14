@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from avt.analysis.detection import BrandDetector, BrandSpec, BrandHit
+from avt.analysis.detection import BrandDetector, BrandHit, BrandSpec
 from avt.analysis.pipeline import ANALYSIS_VERSION, analyze_response
 from avt.analysis.sentiment import (
     FallbackSentimentAnalyzer,
@@ -59,7 +59,8 @@ async def test_pipeline_combines_detection_sources_and_sentiment() -> None:
     )
     assert result.version == ANALYSIS_VERSION
     assert [m.hit.brand.name for m in result.mentions] == ["Pipewise", "Lumora"]
-    assert result.primary is not None and result.primary.hit.position == 2
+    assert result.primary is not None
+    assert result.primary.hit.position == 2
     assert [s.domain for s in result.sources] == ["g2.com", "forbes.com"]
     detail: dict[str, Any] = result.detail()
     assert detail["mentions"][1]["spans"][0]["matched"] == "Lumora"
@@ -68,5 +69,6 @@ async def test_pipeline_combines_detection_sources_and_sentiment() -> None:
 @pytest.mark.parametrize("text", ["", "No brands here at all."])
 async def test_pipeline_without_mentions(text: str) -> None:
     result = await analyze_response(text, [], BrandDetector([PRIMARY]), LexiconSentimentAnalyzer())
-    assert result.mentions == [] and result.primary is None
+    assert result.mentions == []
+    assert result.primary is None
     assert result.overall_sentiment is Sentiment.NEUTRAL

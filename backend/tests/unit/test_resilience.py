@@ -105,7 +105,8 @@ async def test_concurrency_cap(redis: Redis) -> None:
     sem = ConcurrencyLimiter(redis, lease_seconds=60)
     a = await sem.try_acquire("p", 2)
     b = await sem.try_acquire("p", 2)
-    assert a and b
+    assert a
+    assert b
     assert await sem.try_acquire("p", 2) is None
     await sem.release("p", a)
     assert await sem.try_acquire("p", 2) is not None
@@ -131,12 +132,14 @@ async def test_breaker_opens_after_threshold_and_half_opens(redis: Redis) -> Non
     assert await cb.record_failure("p")  # third failure trips it
 
     decision = await cb.allow("p")
-    assert not decision.allowed and decision.state is BreakerState.OPEN
+    assert not decision.allowed
+    assert decision.state is BreakerState.OPEN
     assert 0 < decision.retry_after_seconds <= 0.1
 
     await asyncio.sleep(0.12)
     probe = await cb.allow("p")
-    assert probe.allowed and probe.state is BreakerState.HALF_OPEN
+    assert probe.allowed
+    assert probe.state is BreakerState.HALF_OPEN
     assert not (await cb.allow("p")).allowed  # only one probe at a time
 
     await cb.record_success("p")
