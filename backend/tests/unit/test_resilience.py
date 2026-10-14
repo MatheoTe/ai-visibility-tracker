@@ -114,10 +114,10 @@ async def test_concurrency_cap(redis: Redis) -> None:
 
 
 async def test_concurrency_lease_expires(redis: Redis) -> None:
-    sem = ConcurrencyLimiter(redis, lease_seconds=0.05)
+    sem = ConcurrencyLimiter(redis, lease_seconds=0.3)
     assert await sem.try_acquire("p", 1)
     assert await sem.try_acquire("p", 1) is None
-    await asyncio.sleep(0.08)
+    await asyncio.sleep(0.35)
     assert await sem.try_acquire("p", 1)  # the crashed holder's lease was reclaimed
 
 
@@ -125,7 +125,7 @@ async def test_concurrency_lease_expires(redis: Redis) -> None:
 
 
 async def test_breaker_opens_after_threshold_and_half_opens(redis: Redis) -> None:
-    cb = CircuitBreaker(redis, failure_threshold=3, window_seconds=10, cooldown_seconds=0.1)
+    cb = CircuitBreaker(redis, failure_threshold=3, window_seconds=10, cooldown_seconds=0.3)
     assert (await cb.allow("p")).allowed
     assert not await cb.record_failure("p")
     assert not await cb.record_failure("p")
@@ -134,9 +134,9 @@ async def test_breaker_opens_after_threshold_and_half_opens(redis: Redis) -> Non
     decision = await cb.allow("p")
     assert not decision.allowed
     assert decision.state is BreakerState.OPEN
-    assert 0 < decision.retry_after_seconds <= 0.1
+    assert 0 < decision.retry_after_seconds <= 0.3
 
-    await asyncio.sleep(0.12)
+    await asyncio.sleep(0.35)
     probe = await cb.allow("p")
     assert probe.allowed
     assert probe.state is BreakerState.HALF_OPEN
@@ -147,9 +147,9 @@ async def test_breaker_opens_after_threshold_and_half_opens(redis: Redis) -> Non
 
 
 async def test_failed_probe_reopens(redis: Redis) -> None:
-    cb = CircuitBreaker(redis, failure_threshold=1, window_seconds=10, cooldown_seconds=0.05)
+    cb = CircuitBreaker(redis, failure_threshold=1, window_seconds=10, cooldown_seconds=0.3)
     await cb.record_failure("p")
-    await asyncio.sleep(0.07)
+    await asyncio.sleep(0.35)
     assert (await cb.allow("p")).allowed  # probe
     assert await cb.record_failure("p")  # probe failed -> open again
     assert not (await cb.allow("p")).allowed

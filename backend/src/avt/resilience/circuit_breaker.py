@@ -100,12 +100,15 @@ class CircuitBreaker:
         failure_threshold: int,
         window_seconds: float,
         cooldown_seconds: float,
+        probe_ttl_seconds: float = 60,
         prefix: str = "avt:cb",
     ) -> None:
         self._redis = redis
         self._threshold = failure_threshold
         self._window_ms = int(window_seconds * 1000)
         self._cooldown_ms = int(cooldown_seconds * 1000)
+        # How long a half-open probe may be in flight before another is allowed.
+        self._probe_ttl_ms = int(probe_ttl_seconds * 1000)
         self._prefix = prefix
         self._allow = redis.register_script(_ALLOW)
         self._failure = redis.register_script(_FAILURE)
@@ -117,7 +120,7 @@ class CircuitBreaker:
 
     async def allow(self, scope: str) -> BreakerDecision:
         _, open_key, probe_key = self._keys(scope)
-        res = cast("list[Any]", await self._allow(keys=[open_key, probe_key], args=[self._cooldown_ms]))
+        res = cast("list[Any]", await self._allow(keys=[open_key, probe_key], args=[self._probe_ttl_ms]))
         return BreakerDecision(
             allowed=bool(int(res[0])),
             retry_after_seconds=int(res[1]) / 1000,
