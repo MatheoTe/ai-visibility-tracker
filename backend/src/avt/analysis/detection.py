@@ -85,8 +85,7 @@ def _pattern(variants: Iterable[str]) -> re.Pattern[str]:
 def _is_derived(word: str, stem: str) -> bool:
     """True for inflections of the brand name ("pipewiser", "hubnesting")."""
     return any(
-        word.endswith(suffix) and word[: -len(suffix)] in (stem, stem[:-1])
-        for suffix in _DERIVED_SUFFIXES
+        word.endswith(suffix) and word[: -len(suffix)] in (stem, stem[:-1]) for suffix in _DERIVED_SUFFIXES
     )
 
 
