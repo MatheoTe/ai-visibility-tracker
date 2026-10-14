@@ -92,6 +92,9 @@ class Settings(BaseSettings):
             limits = self._limits[provider] = ProviderLimits(_env_prefix=f"AVT_LIMITS_{provider.upper()}_")
         return limits
 
+    def override_limits(self, provider: str, limits: ProviderLimits) -> None:
+        self._limits[provider] = limits
+
 
 @lru_cache
 def get_settings() -> Settings:
