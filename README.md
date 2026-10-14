@@ -1,5 +1,8 @@
 # AI Visibility Tracker
 
+[![Live demo](https://img.shields.io/badge/Live_demo-open_the_dashboard-2a78d6?style=for-the-badge)](https://ai-visibility-tracker.vercel.app)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/MatheoTe/ai-visibility-tracker)
+
 **When someone asks an AI assistant "what's the best CRM for a small business?", is your brand in the answer?**
 
 AI Visibility Tracker asks that question — and every other question your buyers ask — to Claude, GPT, Gemini and Perplexity every day, then measures how often your brand is mentioned, in what position, with what tone, and which sources the answers cite. It is the AI-search equivalent of rank tracking: share of voice against your competitors, over time, per model.
@@ -15,6 +18,22 @@ It runs end to end **with zero API keys** (a deterministic fake provider stands 
 Dark mode: [`docs/screenshots/dashboard-dark.png`](docs/screenshots/dashboard-dark.png). Screenshots are produced by [`frontend/scripts/screenshots.mjs`](frontend/scripts/screenshots.mjs) against the seeded demo.
 
 > **GIF to record:** sign in as the demo user → Overview (switch metric tabs, filter to one model) → Prompts → open "best CRM for small businesses" → Runs → **Run now** → watch the progress bar fill and per-model cost update live → back to Overview.
+
+## Live demo
+
+Two ways to try it without installing anything:
+
+- **[Live demo](https://ai-visibility-tracker.vercel.app)** — the dashboard as a static site, read-only. Every page (overview, prompts and the per-answer drill-down, brands, sources, runs and the run monitor) is served from a JSON snapshot of the seeded demo workspace, so there is no backend behind it: actions that would write (Run now, add a prompt, delete a brand, …) explain that they are disabled. Dates are shifted so the 30 days of history always end today. All data is fictional.
+- **[Codespaces](https://codespaces.new/MatheoTe/ai-visibility-tracker)** — the full system in your browser: Postgres, Redis, API, workers, scheduler and dashboard from the same `docker-compose.yml`, on the fake provider, no secrets. The first start builds the images (a few minutes); then the Dashboard port opens and you sign in as `demo@avt.dev` / `demo-password`. Here **Run now** really fans out tasks to the workers and you can watch the run fill in.
+
+<details>
+<summary>How the static demo is built</summary>
+
+- `NEXT_PUBLIC_DEMO_MODE=1` swaps the API client for [`lib/api/demo.ts`](frontend/src/lib/api/demo.ts), which answers the same `/api/v1/...` paths from `frontend/public/demo/` (search, model and status filters, offset and cursor pagination reproduced in memory; aggregates served as the backend computed them). Responses still go through the zod contract schemas, and a Vitest test parses the committed snapshot against them.
+- Regenerate the snapshot from a seeded backend: `API_URL=http://localhost:8000 node frontend/scripts/export-demo-snapshot.mjs`.
+- Vercel: project root directory `frontend/`, framework Next.js ([`frontend/vercel.json`](frontend/vercel.json)). Demo mode turns on by itself on Vercel builds; set `NEXT_PUBLIC_DEMO_MODE=0` and `NEXT_PUBLIC_API_URL` there to point a deployment at a real API instead.
+
+</details>
 
 ---
 
@@ -174,6 +193,8 @@ docker compose up --build
 # http://localhost:8000/docs — OpenAPI
 ```
 
+Or open it in [Codespaces](https://codespaces.new/MatheoTe/ai-visibility-tracker): [`.devcontainer/`](.devcontainer) runs this same compose file, with the dashboard proxying `/api/v1` to the API so only one forwarded port is needed.
+
 Compose runs Postgres, Redis, migrations, the seed (fictional CRM market, 5 brands, 25 prompts, 30 days of history — idempotent), the API, two task workers, an analysis worker, the scheduler and the frontend. To query real models, copy `.env.example` to `.env` and add any subset of `AVT_ANTHROPIC_API_KEY`, `AVT_OPENAI_API_KEY`, `AVT_GEMINI_API_KEY`, `AVT_PERPLEXITY_API_KEY`; providers without a key keep using the fake.
 
 ### Locally
@@ -220,7 +241,7 @@ npm run test:e2e        # starts API, both worker pools and the built app; needs
 ```
 
 - **Backend: 67 tests, 77% line coverage.** Unit (53): brand detection (aliases, separators, word boundaries, overlaps, fuzzy typos vs inflections, URLs), position ranking, URL normalisation and extraction, sentiment and fallback, token bucket (requests, tokens, reconciliation), concurrency leases, circuit breaker (ratio, half-open probe, late results), backoff and jitter, retry budget, fake-provider determinism. Integration (14, real Postgres + Redis + a real arq worker): a full fault-injected run through the API to the dashboard, dead-letter → retry-failed, the retry budget, duplicate deliveries, scheduler races, tenant isolation, validation, ops endpoints, re-analysis, and dashboard KPIs checked against raw rows.
-- **Frontend: 17 Vitest tests** (formatting, highlight segmentation, series pivots, color assignment, schema contracts, components) and **1 Playwright E2E**: sign up → add brand and competitors → add prompts → run → watch it complete → dashboard → drill-down with highlighted mentions. Its first run caught a real bug (the first brand defaulted to *competitor*).
+- **Frontend: 31 Vitest tests** (formatting, highlight segmentation, series pivots, color assignment, schema contracts, components, the live-demo backend and its committed snapshot) and **1 Playwright E2E**: sign up → add brand and competitors → add prompts → run → watch it complete → dashboard → drill-down with highlighted mentions. Its first run caught a real bug (the first brand defaulted to *competitor*).
 - **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): ruff, ruff format, mypy, `alembic check` (migrations match models), pytest with Postgres and Redis services, OpenAPI and generated-types drift checks, typecheck, lint, Vitest, build, and the Playwright E2E.
 
 ## Project structure
