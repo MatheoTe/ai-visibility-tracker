@@ -1,0 +1,95 @@
+# Full stack with fake LLM providers and a seeded demo workspace:
+#   docker compose up --build        ->  http://localhost:3000  (demo@avt.dev / demo-password)
+# Add provider keys to .env (see .env.example) to query real models.
+
+x-backend: &backend
+  build: ./backend
+  env_file:
+    - path: .env
+      required: false
+  environment: &backend-env
+    AVT_DATABASE_URL: postgresql+asyncpg://avt:avt@postgres:5432/avt
+    AVT_REDIS_URL: redis://redis:6379/0
+    AVT_CORS_ORIGINS: '["http://localhost:3000"]'
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: avt
+      POSTGRES_PASSWORD: avt
+      POSTGRES_DB: avt
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avt"]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      AVT_DATABASE_URL: postgresql+asyncpg://avt:avt@postgres:5432/avt
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    <<: *backend
+    command: ["avt-seed"]   # idempotent: skips if the demo workspace exists
+    restart: "no"
+
+  api:
+    <<: *backend
+    command: ["uvicorn", "avt.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"]
+      interval: 5s
+      retries: 20
+
+  worker:
+    <<: *backend
+    command: ["arq", "avt.worker.main.WorkerSettings"]
+    deploy:
+      replicas: 2
+
+  analyzer:
+    <<: *backend
+    command: ["arq", "avt.worker.main.AnalysisWorkerSettings"]
+
+  scheduler:
+    <<: *backend
+    command: ["avt-scheduler"]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports: ["3000:3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
