@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { api, getToken, onUnauthorized, setToken } from "@/lib/api/client";
+import { api, getServerToken, getToken, onUnauthorized, setToken } from "@/lib/api/client";
 import { meOut, tokenOut, type Workspace } from "@/lib/api/schemas";
 
 interface Session {
@@ -34,7 +34,7 @@ const subscribe = (cb: () => void) => {
 const notify = () => listeners.forEach((cb) => cb());
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const token = useSyncExternalStore(subscribe, getToken, () => null);
+  const token = useSyncExternalStore(subscribe, getToken, getServerToken);
   const qc = useQueryClient();
   useEffect(() => {
     // An expired token anywhere signs the user out; the app shell then routes to /login.

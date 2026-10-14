@@ -7,6 +7,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DEMO_MODE } from "@/lib/api/demo";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -65,9 +66,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto hidden px-2 pt-4 md:block">
           <div className="mb-2 truncate text-xs text-muted-foreground">{email}</div>
-          <Button variant="ghost" size="sm" onClick={logout} className="-ml-2">
-            <LogOut /> Sign out
-          </Button>
+          {DEMO_MODE ? null : (
+            <Button variant="ghost" size="sm" onClick={logout} className="-ml-2">
+              <LogOut /> Sign out
+            </Button>
+          )}
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8">{children}</main>

@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TBody, THead, Table, Td, Th, Tr } from "@/components/ui/table";
+import { DEMO_MODE, DEMO_READ_ONLY_MESSAGE } from "@/lib/api/demo";
 import { usePromptMutations, usePrompts } from "@/lib/api/hooks";
 import { pct } from "@/lib/format";
+import { showToast } from "@/lib/toast";
 
 const LIMIT = 25;
 
@@ -60,7 +62,12 @@ export default function PromptsPage() {
               data-testid="csv-input"
               onChange={(e) => onImport(e.target.files?.[0])}
             />
-            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={importCsv.isPending}>
+            <Button
+              variant="outline"
+              // In the live demo, say so before the file picker opens rather than after a file is chosen.
+              onClick={() => (DEMO_MODE ? showToast(DEMO_READ_ONLY_MESSAGE) : fileRef.current?.click())}
+              disabled={importCsv.isPending}
+            >
               <Upload /> Import CSV
             </Button>
           </>

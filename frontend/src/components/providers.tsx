@@ -3,6 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
+import { DemoBanner, Toaster } from "@/components/demo";
+import { DEMO_MODE } from "@/lib/api/demo";
 import { SessionProvider } from "@/lib/session";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -14,7 +16,9 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   return (
     <QueryClientProvider client={client}>
+      {DEMO_MODE ? <DemoBanner /> : null}
       <SessionProvider>{children}</SessionProvider>
+      <Toaster />
     </QueryClientProvider>
   );
 }

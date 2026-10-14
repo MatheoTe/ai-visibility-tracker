@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { DEMO_MODE } from "@/lib/api/demo";
 import { useSession } from "@/lib/session";
 
 export default function LoginPage() {
@@ -17,6 +18,11 @@ export default function LoginPage() {
   const [workspace, setWorkspace] = useState("My brand");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // The live demo is always signed in as the fictional demo user.
+  useEffect(() => {
+    if (DEMO_MODE) router.replace("/dashboard");
+  }, [router]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

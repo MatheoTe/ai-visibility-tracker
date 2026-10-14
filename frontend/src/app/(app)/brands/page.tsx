@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { TBody, THead, Table, Td, Th, Tr } from "@/components/ui/table";
+import { DEMO_MODE } from "@/lib/api/demo";
 import { useBrandMutations, useBrands } from "@/lib/api/hooks";
 
 const splitList = (v: string) =>
@@ -74,7 +75,9 @@ export default function BrandsPage() {
                         size="icon"
                         aria-label={`Delete ${b.name}`}
                         onClick={() => {
-                          if (confirm(`Delete ${b.name}? Its historical mentions are removed too.`)) remove.mutate(b.id);
+                          // The demo refuses the delete with a toast, so there is nothing to confirm.
+                          if (DEMO_MODE || confirm(`Delete ${b.name}? Its historical mentions are removed too.`))
+                            remove.mutate(b.id);
                         }}
                       >
                         <Trash2 />
