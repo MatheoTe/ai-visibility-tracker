@@ -135,21 +135,26 @@ class BrandDetector:
         return ordered
 
     def _fuzzy_candidates(self, norm: str, exact: list[_Candidate]) -> list[_Candidate]:
-        tokens = [(m.start(), m.end()) for m in _TOKEN.finditer(norm)]
-        claimed = [(c.nstart, c.nend) for c in exact]
+        # Token windows are built once per text and bucketed by compacted length, so
+        # each alias only compares against windows within +-2 characters of it.
+        tokens = [(m.start(), m.end(), compact(m.group())) for m in _TOKEN.finditer(norm)]
+        claimed = [any(s < c.nend and c.nstart < e for c in exact) for s, e, _ in tokens]
+        by_len: dict[int, list[tuple[int, int, str]]] = {}
+        max_width = 1 + max((n for targets in self._fuzzy_targets for _, n in targets), default=0)
+        for width in range(1, max_width + 1):
+            for t in range(len(tokens) - width + 1):
+                if any(claimed[t : t + width]):
+                    continue
+                window = "".join(tok[2] for tok in tokens[t : t + width])
+                by_len.setdefault(len(window), []).append((tokens[t][0], tokens[t + width - 1][1], window))
+
         found: list[_Candidate] = []
         for b_idx, targets in enumerate(self._fuzzy_targets):
-            for target, n_words in targets:
-                for width in {n_words, n_words + 1} - {0}:
-                    for t in range(len(tokens) - width + 1):
-                        s, e = tokens[t][0], tokens[t + width - 1][1]
-                        if any(s < ce and cs < e for cs, ce in claimed):
+            for target, _ in targets:
+                for length in range(len(target) - 2, len(target) + 3):
+                    for s, e, window in by_len.get(length, ()):
+                        if window == target or _is_derived(window, target):
                             continue
-                        window = compact(norm[s:e])
-                        if abs(len(window) - len(target)) > 2 or window == target:
-                            continue
-                        if _is_derived(window, target):
-                            continue  # "pipewiser", "hubnesting": a different word, not a typo
                         if fuzz.ratio(window, target) >= FUZZY_THRESHOLD:
                             found.append(_Candidate(b_idx, s, e, "fuzzy"))
         return found
