@@ -124,12 +124,13 @@ async def test_concurrency_lease_expires(redis: Redis) -> None:
 # ----------------------------------------------------------------------- circuit breaker
 
 
-async def test_breaker_opens_after_threshold_and_half_opens(redis: Redis) -> None:
-    cb = CircuitBreaker(redis, failure_threshold=3, window_seconds=10, cooldown_seconds=0.3)
+async def test_breaker_opens_on_failure_ratio_and_half_opens(redis: Redis) -> None:
+    cb = CircuitBreaker(redis, failure_ratio=0.5, min_requests=4, window_seconds=10, cooldown_seconds=0.3)
     assert (await cb.allow("p")).allowed
-    assert not await cb.record_failure("p")
-    assert not await cb.record_failure("p")
-    assert await cb.record_failure("p")  # third failure trips it
+    await cb.record_success("p")
+    assert not await cb.record_failure("p")  # 1/2 failed, but below min_requests
+    assert not await cb.record_failure("p")  # 2/3
+    assert await cb.record_failure("p")  # 3/4 >= 50% with enough volume: trips
 
     decision = await cb.allow("p")
     assert not decision.allowed
@@ -146,17 +147,29 @@ async def test_breaker_opens_after_threshold_and_half_opens(redis: Redis) -> Non
     assert (await cb.allow("p")).state is BreakerState.CLOSED
 
 
+async def test_healthy_high_volume_with_some_errors_never_trips(redis: Redis) -> None:
+    cb = CircuitBreaker(redis, failure_ratio=0.5, min_requests=20, window_seconds=10, cooldown_seconds=5)
+    tripped = False
+    for i in range(400):  # a 5% error rate at volume - what a count threshold would trip on
+        if i % 20 == 0:
+            tripped |= await cb.record_failure("p")
+        else:
+            await cb.record_success("p")
+    assert not tripped
+    assert await cb.state("p") is BreakerState.CLOSED
+
+
 async def test_failed_probe_reopens(redis: Redis) -> None:
-    cb = CircuitBreaker(redis, failure_threshold=1, window_seconds=10, cooldown_seconds=0.3)
-    await cb.record_failure("p")
+    cb = CircuitBreaker(redis, failure_ratio=0.5, min_requests=1, window_seconds=10, cooldown_seconds=0.3)
+    assert await cb.record_failure("p")
     await asyncio.sleep(0.35)
     assert (await cb.allow("p")).allowed  # probe
     assert await cb.record_failure("p")  # probe failed -> open again
     assert not (await cb.allow("p")).allowed
 
 
-async def test_success_while_open_does_not_close(redis: Redis) -> None:
-    cb = CircuitBreaker(redis, failure_threshold=1, window_seconds=10, cooldown_seconds=5)
+async def test_result_while_open_does_not_close(redis: Redis) -> None:
+    cb = CircuitBreaker(redis, failure_ratio=0.5, min_requests=1, window_seconds=10, cooldown_seconds=5)
     await cb.record_failure("p")
     await cb.record_success("p")  # a slow call that started before the trip
     assert await cb.state("p") is BreakerState.OPEN

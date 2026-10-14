@@ -68,7 +68,8 @@ class Settings(BaseSettings):
     retry_budget_floor: int = 20
     backoff_base_seconds: float = 1.0
     backoff_max_seconds: float = 60.0
-    breaker_failure_threshold: int = 8
+    breaker_failure_ratio: float = 0.5
+    breaker_min_requests: int = 20
     breaker_window_seconds: int = 30
     breaker_cooldown_seconds: int = 20
     dispatch_batch_size: int = 500

@@ -54,7 +54,7 @@ class InlineRunner:
             limiter=TokenBucketLimiter(redis, prefix="avt:seed:tb"),
             concurrency=ConcurrencyLimiter(redis, prefix="avt:seed:sem"),
             breaker=CircuitBreaker(
-                redis, failure_threshold=10_000, window_seconds=1, cooldown_seconds=1, prefix="avt:seed:cb"
+                redis, min_requests=10**9, window_seconds=1, cooldown_seconds=1, prefix="avt:seed:cb"
             ),
             budget=RetryBudget(redis, ratio=1.0, floor=1000, prefix="avt:seed:rb"),
             brands=brands,
