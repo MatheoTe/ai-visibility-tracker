@@ -9,7 +9,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "AI Visibility Tracker", template: "%s · AI Visibility Tracker" },
+  title: { default: "Echolytics", template: "%s · Echolytics" },
   description: "How often do AI assistants recommend your brand? Share of voice, position, sentiment and sources.",
 };
 

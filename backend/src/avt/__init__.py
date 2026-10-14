@@ -1,3 +1,3 @@
-"""AI Visibility Tracker backend."""
+"""Echolytics backend."""
 
 __version__ = "0.1.0"

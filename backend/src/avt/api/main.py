@@ -44,7 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await app.state.db.dispose()
 
     app = FastAPI(
-        title="AI Visibility Tracker",
+        title="Echolytics",
         version=__version__,
         description=(
             "Track how AI assistants (Claude, GPT, Gemini, Perplexity) mention your brand "

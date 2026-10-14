@@ -43,7 +43,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-lg">AI Visibility Tracker</CardTitle>
+          <CardTitle className="text-lg">Echolytics</CardTitle>
           <CardDescription>
             {mode === "login"
               ? "Sign in. The demo account is pre-filled."

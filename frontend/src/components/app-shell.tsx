@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col gap-1 border-b border-border bg-card px-3 py-3 md:w-56 md:border-b-0 md:border-r md:py-5">
         <div className="mb-3 hidden px-2 md:block">
-          <div className="text-sm font-semibold">AI Visibility</div>
+          <div className="text-sm font-semibold">Echolytics</div>
           <div className="truncate text-xs text-muted-foreground" title={workspace.name}>
             {workspace.name}
           </div>

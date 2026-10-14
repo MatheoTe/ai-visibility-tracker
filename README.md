@@ -1,11 +1,11 @@
-# AI Visibility Tracker
+# Echolytics
 
-[![Live demo](https://img.shields.io/badge/Live_demo-open_the_dashboard-2a78d6?style=for-the-badge)](https://ai-visibility-tracker-matheote.vercel.app)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/MatheoTe/ai-visibility-tracker)
+[![Live demo](https://img.shields.io/badge/Live_demo-open_the_dashboard-2a78d6?style=for-the-badge)](https://echolytics.vercel.app)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/MatheoTe/echolytics)
 
 **When someone asks an AI assistant "what's the best CRM for a small business?", is your brand in the answer?**
 
-AI Visibility Tracker asks that question — and every other question your buyers ask — to Claude, GPT, Gemini and Perplexity every day, then measures how often your brand is mentioned, in what position, with what tone, and which sources the answers cite. It is the AI-search equivalent of rank tracking: share of voice against your competitors, over time, per model.
+Echolytics asks that question — and every other question your buyers ask — to Claude, GPT, Gemini and Perplexity every day, then measures how often your brand is mentioned, in what position, with what tone, and which sources the answers cite. It is the AI-search equivalent of rank tracking: share of voice against your competitors, over time, per model.
 
 It runs end to end **with zero API keys** (a deterministic fake provider stands in for every model), so `docker compose up` gives you a working product with 30 days of demo history.
 
@@ -23,8 +23,8 @@ Dark mode: [`docs/screenshots/dashboard-dark.png`](docs/screenshots/dashboard-da
 
 Two ways to try it without installing anything:
 
-- **[Live demo](https://ai-visibility-tracker-matheote.vercel.app)** — the dashboard as a static site, read-only. Every page (overview, prompts and the per-answer drill-down, brands, sources, runs and the run monitor) is served from a JSON snapshot of the seeded demo workspace, so there is no backend behind it: actions that would write (Run now, add a prompt, delete a brand, …) explain that they are disabled. Dates are shifted so the 30 days of history always end today. All data is fictional.
-- **[Codespaces](https://codespaces.new/MatheoTe/ai-visibility-tracker)** — the full system in your browser: Postgres, Redis, API, workers, scheduler and dashboard from the same `docker-compose.yml`, on the fake provider, no secrets. The first start builds the images (a few minutes); then the Dashboard port opens and you sign in as `demo@avt.dev` / `demo-password`. Here **Run now** really fans out tasks to the workers and you can watch the run fill in.
+- **[Live demo](https://echolytics.vercel.app)** — the dashboard as a static site, read-only. Every page (overview, prompts and the per-answer drill-down, brands, sources, runs and the run monitor) is served from a JSON snapshot of the seeded demo workspace, so there is no backend behind it: actions that would write (Run now, add a prompt, delete a brand, …) explain that they are disabled. Dates are shifted so the 30 days of history always end today. All data is fictional.
+- **[Codespaces](https://codespaces.new/MatheoTe/echolytics)** — the full system in your browser: Postgres, Redis, API, workers, scheduler and dashboard from the same `docker-compose.yml`, on the fake provider, no secrets. The first start builds the images (a few minutes); then the Dashboard port opens and you sign in as `demo@avt.dev` / `demo-password`. Here **Run now** really fans out tasks to the workers and you can watch the run fill in.
 
 <details>
 <summary>How the static demo is built</summary>
@@ -193,7 +193,7 @@ docker compose up --build
 # http://localhost:8000/docs — OpenAPI
 ```
 
-Or open it in [Codespaces](https://codespaces.new/MatheoTe/ai-visibility-tracker): [`.devcontainer/`](.devcontainer) runs this same compose file, with the dashboard proxying `/api/v1` to the API so only one forwarded port is needed.
+Or open it in [Codespaces](https://codespaces.new/MatheoTe/echolytics): [`.devcontainer/`](.devcontainer) runs this same compose file, with the dashboard proxying `/api/v1` to the API so only one forwarded port is needed.
 
 Compose runs Postgres, Redis, migrations, the seed (fictional CRM market, 5 brands, 25 prompts, 30 days of history — idempotent), the API, two task workers, an analysis worker, the scheduler and the frontend. To query real models, copy `.env.example` to `.env` and add any subset of `AVT_ANTHROPIC_API_KEY`, `AVT_OPENAI_API_KEY`, `AVT_GEMINI_API_KEY`, `AVT_PERPLEXITY_API_KEY`; providers without a key keep using the fake.
 

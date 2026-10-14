@@ -1,7 +1,7 @@
 [project]
 name = "avt"
 version = "0.1.0"
-description = "AI Visibility Tracker - measure how often AI assistants mention your brand."
+description = "Echolytics - measure how often AI assistants mention your brand."
 authors = [{ name = "Matheo Telesca" }]
 license = "MIT"
 requires-python = ">=3.12"

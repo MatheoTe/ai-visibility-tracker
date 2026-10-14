@@ -2,7 +2,7 @@
   // Full system in the browser: Postgres, Redis, API, workers, scheduler and the
   // dashboard from ../docker-compose.yml, on the fake LLM provider with the seeded
   // demo workspace. No secrets needed. Sign in with demo@avt.dev / demo-password.
-  "name": "AI Visibility Tracker",
+  "name": "Echolytics",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},

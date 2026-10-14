@@ -18,7 +18,7 @@ import type { meOut } from "./schemas";
 import type { z } from "zod";
 
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1" || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-export const DEMO_REPO_URL = "https://github.com/MatheoTe/ai-visibility-tracker";
+export const DEMO_REPO_URL = "https://github.com/MatheoTe/echolytics";
 export const DEMO_READ_ONLY_MESSAGE =
   "Disabled in the live demo — run it locally or in Codespaces to start runs and edit data.";
 
