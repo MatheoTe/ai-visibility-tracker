@@ -15,7 +15,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import exists, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -232,8 +232,9 @@ async def maybe_finalize_run(
     """Close the run if all work is done. Returns (status, days touched) when it did.
 
     Called after every task reaches a terminal state and after every analysis, so
-    the common case must be cheap: one indexed COUNT, no locks. Only when nothing
-    is outstanding do we take the row lock that serialises the actual transition.
+    the common case must be cheap and lock-free: two indexed counts that return
+    early while work is outstanding. Only the last few callers of a run reach the
+    row lock that serialises the actual transition (and re-check under it).
     """
     outstanding = (
         await session.execute(
@@ -241,11 +242,25 @@ async def maybe_finalize_run(
             .select_from(RunTask)
             .where(
                 RunTask.run_id == run_id,
-                RunTask.status.notin_([TaskStatus.SUCCEEDED, TaskStatus.DEAD]),
+                # IN over the non-terminal states keeps this an index range scan on
+                # (run_id, status) that shrinks as the run progresses.
+                RunTask.status.in_([TaskStatus.PENDING, TaskStatus.QUEUED, TaskStatus.RUNNING]),
             )
         )
     ).scalar_one()
     if outstanding:
+        return None
+    unanalyzed = (
+        await session.execute(
+            select(func.count())
+            .select_from(Response)
+            .where(
+                Response.run_id == run_id,
+                ~exists().where(Analysis.response_id == Response.id, Analysis.version == analysis_version),
+            )
+        )
+    ).scalar_one()
+    if unanalyzed:
         return None
 
     run = (await session.execute(select(Run).where(Run.id == run_id).with_for_update())).scalar_one()
