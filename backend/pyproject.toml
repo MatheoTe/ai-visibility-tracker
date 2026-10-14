@@ -1,0 +1,86 @@
+[project]
+name = "avt"
+version = "0.1.0"
+description = "AI Visibility Tracker - measure how often AI assistants mention your brand."
+authors = [{ name = "Matheo Telesca" }]
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20",
+    "anthropic>=1.13",
+    "arq>=0.28",
+    "asyncpg>=0.32",
+    "fastapi>=0.143",
+    "google-genai>=2.30",
+    "httpx>=0.28",
+    "openai>=3.31",
+    "orjson>=3.13",
+    "prometheus-client>=0.26",
+    "pydantic>=2.14",
+    "pydantic-settings>=2.15",
+    "pyjwt>=2.15",
+    "python-multipart>=0.0.32",
+    "rapidfuzz>=3.14",
+    "redis[hiredis]>=5.2,<6",
+    "sqlalchemy[asyncio]>=2.1",
+    "structlog>=26.1",
+    "tldextract>=5.4",
+    "uvicorn[standard]>=0.54",
+]
+
+[project.scripts]
+avt-api = "avt.api.main:run"
+avt-scheduler = "avt.scheduler.main:run"
+avt-seed = "avt.cli.seed:main"
+avt-loadtest = "avt.cli.loadtest:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fakeredis[lua]>=2.39.0",
+    "mypy>=2.4",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "ASYNC", "BLE", "PT", "TC", "S", "C4", "PERF"]
+ignore = [
+  "S101",   # asserts are fine in tests
+  "S311",   # random is used for jitter / simulation, not crypto
+  "TC001", "TC002", "TC003",  # runtime-evaluated annotations (FastAPI, SQLAlchemy, Pydantic)
+  "RUF012",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "PT011"]
+"alembic/**" = ["N999"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+packages = ["avt"]
+
+[[tool.mypy.overrides]]
+module = ["arq.*", "tldextract.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+markers = ["integration: needs Postgres + Redis (AVT_TEST_DATABASE_URL / AVT_TEST_REDIS_URL)"]
+addopts = "-ra"
