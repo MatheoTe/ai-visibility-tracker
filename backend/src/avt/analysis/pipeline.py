@@ -18,7 +18,9 @@ from avt.analysis.sentiment import BrandSentiment, SentimentAnalyzer
 from avt.analysis.urls import Source, extract_sources
 from avt.domain import Sentiment
 
-ANALYSIS_VERSION = 1
+ANALYSIS_VERSION = 2
+# v1: initial release.
+# v2: brand names inside URLs / bare domains are no longer counted as mentions.
 
 
 @dataclass(frozen=True, slots=True)

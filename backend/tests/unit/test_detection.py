@@ -89,3 +89,13 @@ def test_fuzzy_can_be_disabled() -> None:
 
 def test_no_brands_no_hits(detector: BrandDetector) -> None:
     assert detector.detect("Nothing to see here.") == []
+
+
+def test_brand_names_inside_urls_are_not_mentions(detector: BrandDetector) -> None:
+    text = (
+        "Try Clientra.\nSources:\n- https://www.clientra.com/pricing?utm_source=ai\n"
+        "- www.pipewise.com/blog\n- see hubnest.com for details"
+    )
+    hits = detector.detect(text)
+    assert [h.brand.name for h in hits] == ["Clientra"]
+    assert hits[0].mention_count == 1

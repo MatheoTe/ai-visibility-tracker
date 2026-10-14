@@ -29,6 +29,9 @@ from avt.analysis.normalize import alias_variants, compact, normalize_with_offse
 FUZZY_MIN_LEN = 5
 FUZZY_THRESHOLD = 90.0
 _DERIVED_SUFFIXES = frozenset({"s", "es", "er", "ers", "ing", "ed"})
+# Brand names inside URLs ("https://www.acme.com/pricing") are citations, not
+# mentions - they are reported as sources by the URL extractor instead.
+_URLISH = re.compile(r"(?:https?://|www\.)\S+|\b[a-z0-9-]+\.(?:com|io|ai|co|net|org|app|dev)(?:/\S*)?\b")
 _TOKEN = re.compile(r"[a-z0-9][a-z0-9'\-.]*[a-z0-9]|[a-z0-9]")
 
 
@@ -112,6 +115,9 @@ class BrandDetector:
             candidates.extend(_Candidate(i, m.start(), m.end(), "exact") for m in pattern.finditer(norm))
         if self.fuzzy:
             candidates.extend(self._fuzzy_candidates(norm, candidates))
+        urls = [(m.start(), m.end()) for m in _URLISH.finditer(norm)]
+        if urls:
+            candidates = [c for c in candidates if not any(c.nstart < e and s < c.nend for s, e in urls)]
 
         # Longest span wins; on ties, exact beats fuzzy, then earlier wins.
         candidates.sort(key=lambda c: (-(c.nend - c.nstart), c.kind != "exact", c.nstart))
